@@ -2,39 +2,64 @@
 
 import pandas as pd
 import os
-from typing import Dict, Callable
+from typing import Dict
+from abc import ABC, abstractmethod
+
+class Reader(ABC):
+    @abstractmethod
+    def read(self, file_path: str) -> pd.DataFrame:
+        pass
+
+class CSVReader(Reader):
+    def read(self, file_path: str) -> pd.DataFrame:
+        return pd.read_csv(file_path)
+
+class TSVReader(Reader):
+    def read(self, file_path: str) -> pd.DataFrame:
+        return pd.read_csv(file_path, sep='\t')
+
+class ExcelReader(Reader):
+    def read(self, file_path: str) -> pd.DataFrame:
+        return pd.read_excel(file_path, header=0)
+    
+class ReaderFactory:
+    _readers = {
+        '.csv': CSVReader(),
+        '.tsv': TSVReader(),
+        '.txt': CSVReader(),
+        '.xlsx': ExcelReader(),
+        '.xls': ExcelReader()
+    }
+
+    @classmethod
+    def get_reader(cls, extension: str) -> Reader:
+        reader = cls._readers.get(extension)
+        if reader is None:
+            raise ValueError(f"Nenhum leitor encontrado para a extensão '{extension}'")
+        return reader
 
 class DataIngestion:
-    def __init__(self):
-        self.readers: Dict[str, Callable[[str], pd.DataFrame]] = {
-            '.csv': pd.read_csv,
-            '.tsv': lambda path: pd.read_csv(path, sep='\t'),
-            '.txt': pd.read_csv,
-            '.xlsx': pd.read_excel,
-            '.xls': pd.read_excel
-        }
-
     def read_data(self, path: str) -> Dict[str, pd.DataFrame]:
-        """Reads data from files in the specified directory."""
         dataframes = {}
         files_in_directory = os.listdir(path)
 
         for file_name in files_in_directory:
             file_path = os.path.join(path, file_name)
-
             if os.path.isfile(file_path):
                 extension = os.path.splitext(file_name)[1].lower()
-                if extension in self.readers:
-                    try:
-                        dataframes[file_name] = self.readers[extension](file_path)
-                        print(f"The file '{file_name}' loaded successfully.")
-                    except (pd.errors.ParserError, FileNotFoundError, pd.errors.EmptyDataError) as e:
-                        print(f"Error loading file '{file_name}': {e}")
-                else:
-                    print(f"Unsupported file extension: '{extension}'")
+                try:
+                    reader = ReaderFactory.get_reader(extension)
+                    df = reader.read(file_path)
+
+                    # Garantir que os nomes das colunas sejam strings
+                    df.columns = df.columns.map(str)
+
+                    dataframes[file_name] = df
+                    print(f"O arquivo '{file_name}' foi carregado com sucesso.")
+                except Exception as e:
+                    print(f"Erro ao carregar o arquivo '{file_name}': {e}")
         return dataframes
 
 if __name__ == "__main__":
     data_ingestion = DataIngestion()
-    dataframes = data_ingestion.read_data('data/')
-
+    dataframes = data_ingestion.read_data('data/raw/')

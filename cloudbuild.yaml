@@ -1,0 +1,18 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/etl-function:latest', '.']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/etl-function:latest']
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'functions', 'deploy', 'etl_function',
+      '--region', 'us-central1',
+      '--entry-point', 'app',
+      '--runtime', 'python39',
+      '--trigger-http',
+      '--allow-unauthenticated',
+      '--source', '.',
+      '--image', 'gcr.io/$PROJECT_ID/etl-function:latest'
+    ]

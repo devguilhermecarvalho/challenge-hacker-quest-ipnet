@@ -1,0 +1,10 @@
+default:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account-json
+      project: etl-hacker-quest-ipnet
+      dataset: etl_hackerquest
+      threads: 4
+      keyfile_json: '{{ env_var("DBT_KEYFILE_JSON") }}'
