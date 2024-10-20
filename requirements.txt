@@ -1,11 +1,11 @@
 db-dtypes
+dbt-core
 dbt-bigquery
-fastapi
+google-cloud-storage
 google-cloud-bigquery
 google-cloud-bigquery-storage
 numpy
 pandas
 python-dotenv
 pyyaml
-great_expectations
 openpyxl
