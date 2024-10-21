@@ -1,0 +1,28 @@
+version: '3'
+services:
+  python_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/key.json
+    networks:
+      - app_network
+
+  dbt:
+    image: fishtownanalytics/dbt:1.0.0
+    volumes:
+      - ./dbt_transform:/dbt
+      - ./credentials/key.json:/dbt/key.json
+    environment:
+      - DBT_PROFILES_DIR=/dbt
+      - GOOGLE_APPLICATION_CREDENTIALS=./credentials/key.json
+    working_dir: /dbt
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge

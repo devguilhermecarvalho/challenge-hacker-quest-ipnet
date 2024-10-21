@@ -1,11 +1,9 @@
-data_raw_directory: 'data/raw'
-data_validation_directory: 'data/raw_validation'
+data_raw_directory: 'raw'
+data_validation_directory: 'raw_validation'
 
 project_id: 'etl-hacker-quest-ipnet'
 dataset_id: 'etl_hackerquest'
-
-credentials_path: 'credentials/key.json'
-bucket_name: 'etl-validated-data'
+bucket_name: 'bucket_data_challenge'
 
 file_delimiter_mapping:
   hackers.csv: '|'
