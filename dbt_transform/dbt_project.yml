@@ -1,0 +1,11 @@
+name: 'hacker_quest_transform'
+version: '1.0'
+profile: 'default'
+config-version: 2
+
+models:
+  hacker_quest_transform:
+    marts:
+      +materialized: table
+    staging:
+      +materialized: view

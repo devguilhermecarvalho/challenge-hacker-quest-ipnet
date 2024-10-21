@@ -13,13 +13,14 @@ class DataValidation:
         self.dataframes = dataframes
 
     def validate_data(self):
+        """Executa a validação de todos os DataFrames carregados."""
         for file_name, df in self.dataframes.items():
             try:
                 # Verificar se o DataFrame está vazio
                 if df.empty:
                     raise ValueError(f"O DataFrame do arquivo '{file_name}' está vazio.")
 
-                # Validar headers
+                # Validar e corrigir headers se necessário
                 df = self.validate_headers(df, file_name)
 
                 # Verificar valores nulos
@@ -31,12 +32,17 @@ class DataValidation:
                 print(f"Erro na validação do arquivo '{file_name}': {e}")
 
     def validate_headers(self, df: pd.DataFrame, file_name: str) -> pd.DataFrame:
-        # Verificar se os headers são válidos (por exemplo, não são inteiros)
-        if all(isinstance(col, int) for col in df.columns):
-            print(f"Headers estão ausentes ou inválidos no arquivo '{file_name}'. Atribuindo headers genéricos.")
+        """Valida os headers e os corrige se forem numéricos."""
+        # Verificar se todos os headers são números ou inteiros
+        if all(isinstance(col, (int, float)) or str(col).isdigit() for col in df.columns):
+            print(f"Headers numéricos detectados no arquivo '{file_name}'. Atribuindo headers genéricos.")
             num_columns = df.shape[1]
             generic_headers = [f'column{i+1}' for i in range(num_columns)]
-            df.columns = generic_headers
+            df.columns = generic_headers  # Atribuir os headers genéricos
+        else:
+            # Garantir que todos os headers sejam strings
+            df.columns = df.columns.map(str)
+        
         return df
 
 if __name__ == "__main__":

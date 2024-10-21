@@ -3,8 +3,9 @@ default:
   outputs:
     dev:
       type: bigquery
-      method: service-account-json
+      method: service-account
       project: etl-hacker-quest-ipnet
       dataset: etl_hackerquest
       threads: 4
-      keyfile_json: '{{ env_var("DBT_KEYFILE_JSON") }}'
+      keyfile: /home/guilherme/challenge-hacker-quest-ipnet/credentials/key.json
+      location: US

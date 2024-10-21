@@ -6,3 +6,6 @@ dataset_id: 'etl_hackerquest'
 
 credentials_path: 'credentials/key.json'
 bucket_name: 'etl-validated-data'
+
+file_delimiter_mapping:
+  hackers.csv: '|'

@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: etl_hackerquest
+    database: etl-hacker-quest-ipnet
+    tables:
+      - name: difficulty
+      - name: challenges
+      - name: hackers
+      - name: submissions

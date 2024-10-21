@@ -12,33 +12,39 @@ data_validation_directory = configs['data_validation_directory']
 
 class Reader(ABC):
     @abstractmethod
-    def read(self, file_path: str) -> pd.DataFrame:
+    def read(self, file_path: str, delimiter=None) -> pd.DataFrame:
         pass
 
 class CSVReader(Reader):
-    def read(self, file_path: str) -> pd.DataFrame:
+    def read(self, file_path: str, delimiter=None) -> pd.DataFrame:
         try:
-            return pd.read_csv(file_path, sep=None, engine='python')
+            if delimiter:
+                df = pd.read_csv(file_path, sep=delimiter, engine='python', header=None)
+            else:
+                df = pd.read_csv(file_path, sep=None, engine='python', header=None)
+            
+            # Validar e padronizar os headers
+            df = self._apply_generic_headers(df)
+            return df
         except Exception as e:
-            # Tentar ler sem headers
-            return pd.read_csv(file_path, sep=None, engine='python', header=None)
+            print(f"Erro ao ler o arquivo {file_path}: {e}")
+            raise e
+
+    def _apply_generic_headers(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Aplica headers genéricos se o arquivo não tiver header explícito."""
+        num_columns = df.shape[1]
+        generic_headers = [f'column{i+1}' for i in range(num_columns)]
+        df.columns = generic_headers
+        return df
 
 class TSVReader(Reader):
-    def read(self, file_path: str) -> pd.DataFrame:
-        try:
-            return pd.read_csv(file_path, sep='\t')
-        except Exception as e:
-            # Tentar ler sem headers
-            return pd.read_csv(file_path, sep='\t', header=None)
+    def read(self, file_path: str, delimiter=None) -> pd.DataFrame:
+        return pd.read_csv(file_path, sep='\t', header=None)
 
 class ExcelReader(Reader):
-    def read(self, file_path: str) -> pd.DataFrame:
-        try:
-            return pd.read_excel(file_path, header=0)
-        except Exception as e:
-            # Tentar ler sem headers
-            return pd.read_excel(file_path, header=None)
-        
+    def read(self, file_path: str, delimiter=None) -> pd.DataFrame:
+        return pd.read_excel(file_path, header=None)
+
 class ReaderFactory:
     _readers = {
         '.csv': CSVReader(),
@@ -60,15 +66,17 @@ class DataIngestion:
         dataframes = {}
         files_in_directory = os.listdir(path)
 
+        # Carregar mapeamento de delimitadores do configs.yml
+        file_delimiter_mapping = configs.get('file_delimiter_mapping', {})
+
         for file_name in files_in_directory:
             file_path = os.path.join(path, file_name)
             if os.path.isfile(file_path):
                 extension = os.path.splitext(file_name)[1].lower()
                 try:
                     reader = ReaderFactory.get_reader(extension)
-                    df = reader.read(file_path)
-
-                    df.columns = df.columns.map(str)
+                    delimiter = file_delimiter_mapping.get(file_name, None)
+                    df = reader.read(file_path, delimiter=delimiter)
 
                     dataframes[file_name] = df
                     print(f"O arquivo '{file_name}' foi carregado com sucesso.")
