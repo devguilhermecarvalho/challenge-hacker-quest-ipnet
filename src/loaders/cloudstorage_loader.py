@@ -2,8 +2,8 @@ from google.cloud import storage
 import os
 
 class CloudStorageLoader:
-    def __init__(self, credentials, bucket_name: str):
-        self.client = storage.Client(credentials=credentials)
+    def __init__(self, bucket_name: str):
+        self.client = storage.Client()
         self.bucket_name = bucket_name
         self.bucket = self.get_or_create_bucket()
 

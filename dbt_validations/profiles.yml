@@ -7,5 +7,4 @@ default:
       project: etl-hacker-quest-ipnet
       dataset: etl_hackerquest
       threads: 4
-      keyfile: /home/guilherme/challenge-hacker-quest-ipnet/credentials/key.json
       location: US

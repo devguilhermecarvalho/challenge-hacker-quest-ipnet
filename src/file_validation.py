@@ -1,17 +1,16 @@
+# src/file_validation.py
 import os
 import glob
 import shutil
 import pandas as pd
 import yaml
 
-# Carregar configurações
 with open('config/configs.yml', 'r') as f:
     configs = yaml.safe_load(f)
 
 data_raw_directory = configs['data_raw_directory']
 data_validation_directory = configs['data_validation_directory']
 
-# Verificar se os diretórios existem; criar se não existirem
 os.makedirs(data_raw_directory, exist_ok=True)
 os.makedirs(data_validation_directory, exist_ok=True)
 
@@ -68,7 +67,3 @@ class FileValidation:
             print(f'Convertido {os.path.basename(txt_file_path)} para o formato CSV.')
         except Exception as e:
             print(f'Falha ao converter {os.path.basename(txt_file_path)} para CSV: {e}')
-
-if __name__ == "__main__":
-    validator = FileValidation()
-    validator.validate_and_process_files()

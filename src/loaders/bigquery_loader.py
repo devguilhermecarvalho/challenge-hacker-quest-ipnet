@@ -2,11 +2,8 @@ from google.cloud import bigquery
 import pandas as pd
 
 class BigQueryLoader:
-    def __init__(self, credentials, project_id: str):
-        if credentials:
-            self.client = bigquery.Client(credentials=credentials, project=project_id)
-        else:
-            self.client = bigquery.Client(project=project_id)
+    def __init__(self, project_id: str):
+        self.client = bigquery.Client(project=project_id)
 
     def create_dataset_if_not_exists(self, dataset_id: str):
         """Cria o dataset no BigQuery caso não exista."""

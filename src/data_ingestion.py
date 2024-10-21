@@ -1,10 +1,10 @@
+# src/data_ingestion.py
 import pandas as pd
 import os
 from typing import Dict
 from abc import ABC, abstractmethod
 import yaml
 
-# Carregar configurações
 with open('config/configs.yml', 'r') as f:
     configs = yaml.safe_load(f)
 
@@ -22,8 +22,6 @@ class CSVReader(Reader):
                 df = pd.read_csv(file_path, sep=delimiter, engine='python', header=None)
             else:
                 df = pd.read_csv(file_path, sep=None, engine='python', header=None)
-            
-            # Validar e padronizar os headers
             df = self._apply_generic_headers(df)
             return df
         except Exception as e:
@@ -31,7 +29,6 @@ class CSVReader(Reader):
             raise e
 
     def _apply_generic_headers(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Aplica headers genéricos se o arquivo não tiver header explícito."""
         num_columns = df.shape[1]
         generic_headers = [f'column{i+1}' for i in range(num_columns)]
         df.columns = generic_headers
@@ -65,8 +62,6 @@ class DataIngestion:
     def read_data(self, path: str) -> Dict[str, pd.DataFrame]:
         dataframes = {}
         files_in_directory = os.listdir(path)
-
-        # Carregar mapeamento de delimitadores do configs.yml
         file_delimiter_mapping = configs.get('file_delimiter_mapping', {})
 
         for file_name in files_in_directory:
@@ -77,14 +72,9 @@ class DataIngestion:
                     reader = ReaderFactory.get_reader(extension)
                     delimiter = file_delimiter_mapping.get(file_name, None)
                     df = reader.read(file_path, delimiter=delimiter)
-
                     dataframes[file_name] = df
                     print(f"O arquivo '{file_name}' foi carregado com sucesso.")
                     print(f"Colunas: {df.columns.tolist()}")
                 except Exception as e:
                     print(f"Erro ao carregar o arquivo '{file_name}': {e}")
         return dataframes
-
-if __name__ == "__main__":
-    data_ingestion = DataIngestion()
-    dataframes = data_ingestion.read_data(data_validation_directory)
