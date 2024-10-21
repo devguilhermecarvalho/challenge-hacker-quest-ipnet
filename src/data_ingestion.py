@@ -1,9 +1,14 @@
-# src/data_ingestion.py
-
 import pandas as pd
 import os
 from typing import Dict
 from abc import ABC, abstractmethod
+import yaml
+
+# Carregar configurações
+with open('config/configs.yml', 'r') as f:
+    configs = yaml.safe_load(f)
+
+data_validation_directory = configs['data_validation_directory']
 
 class Reader(ABC):
     @abstractmethod
@@ -12,16 +17,28 @@ class Reader(ABC):
 
 class CSVReader(Reader):
     def read(self, file_path: str) -> pd.DataFrame:
-        return pd.read_csv(file_path)
+        try:
+            return pd.read_csv(file_path, sep=None, engine='python')
+        except Exception as e:
+            # Tentar ler sem headers
+            return pd.read_csv(file_path, sep=None, engine='python', header=None)
 
 class TSVReader(Reader):
     def read(self, file_path: str) -> pd.DataFrame:
-        return pd.read_csv(file_path, sep='\t')
+        try:
+            return pd.read_csv(file_path, sep='\t')
+        except Exception as e:
+            # Tentar ler sem headers
+            return pd.read_csv(file_path, sep='\t', header=None)
 
 class ExcelReader(Reader):
     def read(self, file_path: str) -> pd.DataFrame:
-        return pd.read_excel(file_path, header=0)
-    
+        try:
+            return pd.read_excel(file_path, header=0)
+        except Exception as e:
+            # Tentar ler sem headers
+            return pd.read_excel(file_path, header=None)
+        
 class ReaderFactory:
     _readers = {
         '.csv': CSVReader(),
@@ -51,15 +68,15 @@ class DataIngestion:
                     reader = ReaderFactory.get_reader(extension)
                     df = reader.read(file_path)
 
-                    # Garantir que os nomes das colunas sejam strings
                     df.columns = df.columns.map(str)
 
                     dataframes[file_name] = df
                     print(f"O arquivo '{file_name}' foi carregado com sucesso.")
+                    print(f"Colunas: {df.columns.tolist()}")
                 except Exception as e:
                     print(f"Erro ao carregar o arquivo '{file_name}': {e}")
         return dataframes
 
 if __name__ == "__main__":
     data_ingestion = DataIngestion()
-    dataframes = data_ingestion.read_data('data/raw/')
+    dataframes = data_ingestion.read_data(data_validation_directory)

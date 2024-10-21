@@ -1,49 +1,50 @@
-from google.cloud import bigquery
+import yaml
 from google.oauth2 import service_account
-from config.gcp_secrets import get_service_account_key
+from src.file_validation import FileValidation
 from src.data_ingestion import DataIngestion
 from src.data_validation import DataValidation
 from src.loaders.bigquery_loader import BigQueryLoader
+from src.loaders.cloudstorage_loader import CloudStorageLoader
 
-project_number = "1089961646630"
-secret_name = "dbt-service-account-key"
-project_id = "etl-hacker-quest-ipnet"
-dataset_id = "etl_hackerquest"
-credentials_path = "/path/to/key.json"  # Substituir pelo caminho correto
+# Carregar configurações
+with open('config/configs.yml', 'r') as f:
+    configs = yaml.safe_load(f)
 
-# Obter credenciais
-credentials_info = get_service_account_key(project_number, secret_name)
+project_id = configs['project_id']
+dataset_id = configs['dataset_id']
+credentials_path = configs['credentials_path']
+data_raw_directory = configs['data_raw_directory']
+data_validation_directory = configs['data_validation_directory']
+bucket_name = configs['bucket_name']
+
+# Executar validação de arquivos
+validator = FileValidation()
+validator.validate_and_process_files()
+
+# Carregar credenciais do arquivo de chave da conta de serviço
+credentials = service_account.Credentials.from_service_account_file(credentials_path)
 
 # Inicializar DataIngestion
 data_ingestion = DataIngestion()
-dataframes = data_ingestion.read_data('data/raw/')
+dataframes = data_ingestion.read_data(data_validation_directory)
 
 # Validar dados
 data_validation = DataValidation(dataframes)
 data_validation.validate_data()
 
-def create_dataset_if_not_exists(client, dataset_id, project_id):
-    """Cria o dataset no BigQuery caso ele não exista."""
-    dataset_ref = f"{project_id}.{dataset_id}"
-    try:
-        client.get_dataset(dataset_ref)  # Verifica se o dataset existe
-        print(f"Dataset '{dataset_id}' já existe no projeto '{project_id}'.")
-    except Exception as e:
-        print(f"Dataset '{dataset_id}' não encontrado. Criando...")
-        dataset = bigquery.Dataset(dataset_ref)
-        dataset.location = "US"  # Defina a localização conforme necessário
-        client.create_dataset(dataset)
-        print(f"Dataset '{dataset_id}' criado com sucesso.")
+# Inicializar BigQueryLoader com as credenciais
+bq_loader = BigQueryLoader(credentials, project_id)
 
-# Inicializar BigQueryLoader
-bq_loader = BigQueryLoader(credentials_info, project_id)
-
-# Criar o dataset caso não exista
-create_dataset_if_not_exists(bq_loader.client, dataset_id, project_id)
+# Criar o dataset caso não exista usando o método dentro do BigQueryLoader
+bq_loader.create_dataset_if_not_exists(dataset_id)
 
 # Carregar dataframes no BigQuery
 for file_name, df in dataframes.items():
-    table_id = file_name.split('.')[0]  # Nome da tabela é o nome do arquivo sem extensão
-    print(f"Carregando {len(df)} linhas na tabela '{table_id}'...")
+    table_id = file_name.split('.')[0]
     bq_loader.load_dataframe(df, dataset_id, table_id)
     print(f"Tabela '{table_id}' carregada com sucesso.")
+
+# Inicializar CloudStorageLoader e fazer upload dos arquivos validados
+cloud_storage_loader = CloudStorageLoader(credentials, bucket_name)
+cloud_storage_loader.verify_folder_exists('raw_validated/')
+cloud_storage_loader.upload_files(data_validation_directory)
