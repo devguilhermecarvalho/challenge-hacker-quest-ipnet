@@ -12,4 +12,4 @@ steps:
         '--platform', 'managed',
         '--allow-unauthenticated',
         '--service-account', 'guilhermecarvalho-admin@etl-hacker-quest-ipnet.iam.gserviceaccount.com'
-]
+      ]

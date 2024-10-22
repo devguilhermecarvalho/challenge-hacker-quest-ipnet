@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# Run main.py
+# Run the main ETL function
 python main.py
 
-# Run dbt commands
+# Run dbt commands for transformation
 cd dbt_validations
 dbt deps
 dbt seed

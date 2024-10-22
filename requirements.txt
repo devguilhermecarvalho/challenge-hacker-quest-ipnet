@@ -11,5 +11,5 @@ pandas
 python-dotenv
 pyyaml
 openpyxl
-Flask
+flask
 gunicorn
