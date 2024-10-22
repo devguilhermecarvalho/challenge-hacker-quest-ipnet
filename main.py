@@ -17,19 +17,29 @@ def run_etl():
 
     project_id = configs['project_id']
     dataset_id = configs['dataset_id']
-    data_raw_directory = configs['data_raw_directory']
-    data_validation_directory = configs['data_validation_directory']
     bucket_name = configs['bucket_name']
+    bronze_folder = configs['bronze_folder']
+    silver_folder = configs['silver_folder']
 
-    validator = FileValidation()
+    # Initialize Cloud Storage Loader to handle bucket and folder operations
+    cloud_storage_loader = CloudStorageLoader(bucket_name)
+    cloud_storage_loader.verify_bucket_exists()
+    cloud_storage_loader.verify_folder_exists(bronze_folder)
+    cloud_storage_loader.verify_folder_exists(silver_folder)
+
+    # File Validation
+    validator = FileValidation(bucket_name, bronze_folder, silver_folder)
     validator.validate_and_process_files()
 
-    data_ingestion = DataIngestion()
-    dataframes = data_ingestion.read_data(data_validation_directory)
+    # Data Ingestion
+    data_ingestion = DataIngestion(bucket_name, silver_folder)
+    dataframes = data_ingestion.read_data()
 
+    # Data Validation
     data_validation = DataValidation(dataframes)
     data_validation.validate_data()
 
+    # BigQuery Loading
     bq_loader = BigQueryLoader(project_id)
     bq_loader.create_dataset_if_not_exists(dataset_id)
 
@@ -37,10 +47,6 @@ def run_etl():
         table_id = file_name.split('.')[0]
         bq_loader.load_dataframe(df, dataset_id, table_id)
         print(f"Tabela '{table_id}' carregada com sucesso.")
-
-    cloud_storage_loader = CloudStorageLoader(bucket_name)
-    cloud_storage_loader.verify_folder_exists('raw_validated/')
-    cloud_storage_loader.upload_files(data_validation_directory)
 
     # Run dbt commands
     subprocess.run(['dbt', 'deps'], cwd='dbt_validations')

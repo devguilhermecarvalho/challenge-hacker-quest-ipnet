@@ -1,9 +1,10 @@
-data_raw_directory: 'raw'
-data_validation_directory: 'raw_validation'
-
 project_id: 'etl-hacker-quest-ipnet'
 dataset_id: 'etl_hackerquest'
-bucket_name: 'bucket_data_challenge'
+bucket_name: 'datalake'
+
+bronze_folder: 'bronze_layer/'
+silver_folder: 'silver_layer/'
+gold_folder: 'gold_layer/'
 
 file_delimiter_mapping:
   hackers.csv: '|'
