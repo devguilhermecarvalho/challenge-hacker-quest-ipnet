@@ -13,3 +13,7 @@ steps:
         '--allow-unauthenticated',
         '--service-account', 'guilhermecarvalho-admin@etl-hacker-quest-ipnet.iam.gserviceaccount.com'
       ]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+logsBucket: gs://logs-challenge-bucket
