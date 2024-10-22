@@ -3,7 +3,7 @@ default:
   outputs:
     dev:
       type: bigquery
-      method: service-account
+      method: oauth
       project: etl-hacker-quest-ipnet
       dataset: etl_hackerquest
       threads: 4

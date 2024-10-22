@@ -6,23 +6,23 @@ class BigQueryLoader:
         self.client = bigquery.Client(project=project_id)
 
     def create_dataset_if_not_exists(self, dataset_id: str):
-        """Cria o dataset no BigQuery caso não exista."""
+        """Creates the dataset in BigQuery if it does not exist."""
         dataset_ref = f"{self.client.project}.{dataset_id}"
         try:
             self.client.get_dataset(dataset_ref)
-            print(f"Dataset '{dataset_id}' já existe no projeto '{self.client.project}'.")
-        except Exception as e:
-            print(f"Dataset '{dataset_id}' não encontrado. Criando...")
+            print(f"Dataset '{dataset_id}' already exists in project '{self.client.project}'.")
+        except Exception:
+            print(f"Dataset '{dataset_id}' not found. Creating...")
             dataset = bigquery.Dataset(dataset_ref)
             dataset.location = "US"
             self.client.create_dataset(dataset)
-            print(f"Dataset '{dataset_id}' criado com sucesso.")
+            print(f"Dataset '{dataset_id}' created successfully.")
 
     def validate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         df.columns = df.columns.map(str)
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(' ', '_')
-        df.columns = df.columns.str.replace(',', '_')  # Substituir vírgulas nos nomes das colunas
+        df.columns = df.columns.str.replace(',', '_')  # Replace commas in column names
 
         for column in df.columns:
             if pd.api.types.is_object_dtype(df[column]):
@@ -41,13 +41,13 @@ class BigQueryLoader:
         df = self.validate_dataframe(df)
 
         table_ref = f"{self.client.project}.{dataset_id}.{table_id}"
-        print(f"Iniciando carga para a tabela '{table_ref}'...")
+        print(f"Starting load to table '{table_ref}'...")
 
         job_config = bigquery.LoadJobConfig(
             write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
-            autodetect=True,  # Permitir que o BigQuery autodetecte o esquema
+            autodetect=True,  # Allow BigQuery to autodetect the schema
         )
 
         job = self.client.load_table_from_dataframe(df, table_ref, job_config=job_config)
         job.result()
-        print(f"Carregado {len(df)} linhas na tabela '{table_ref}'.")
+        print(f"Loaded {len(df)} rows into table '{table_ref}'.")

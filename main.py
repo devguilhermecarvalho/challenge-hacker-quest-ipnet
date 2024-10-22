@@ -1,63 +1,75 @@
-# main.py
-import os
 import yaml
-from flask import Flask
-from src.file_validation import FileValidation
+import os
+import io
+from google.cloud import storage
+from google.cloud import bigquery
 from src.data_ingestion import DataIngestion
 from src.data_validation import DataValidation
 from src.loaders.bigquery_loader import BigQueryLoader
-from src.loaders.cloudstorage_loader import CloudStorageLoader
-import subprocess
 
-app = Flask(__name__)
+# Load configurations
+with open('config/configs.yml', 'r') as f:
+    configs = yaml.safe_load(f)
 
-def run_etl():
-    with open('config/configs.yml', 'r') as f:
-        configs = yaml.safe_load(f)
+project_id = configs['project_id']
+dataset_id = configs['dataset_id']
+bucket_name = configs['bucket_name']
+bronze_layer_path = configs['bronze_layer_path']
+silver_layer_path = configs['silver_layer_path']
 
-    project_id = configs['project_id']
-    dataset_id = configs['dataset_id']
-    bucket_name = configs['bucket_name']
-    bronze_folder = configs['bronze_folder']
-    silver_folder = configs['silver_folder']
+# Initialize clients
+storage_client = storage.Client()
+bigquery_client = bigquery.Client(project=project_id)
 
-    # Initialize Cloud Storage Loader to handle bucket and folder operations
-    cloud_storage_loader = CloudStorageLoader(bucket_name)
-    cloud_storage_loader.verify_bucket_exists()
-    cloud_storage_loader.verify_folder_exists(bronze_folder)
-    cloud_storage_loader.verify_folder_exists(silver_folder)
+# Ensure bucket and folders exist
+def create_bucket_and_folders():
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+        print(f"Bucket '{bucket_name}' already exists.")
+    except Exception:
+        print(f"Bucket '{bucket_name}' not found. Creating...")
+        bucket = storage_client.create_bucket(bucket_name)
+        print(f"Bucket '{bucket_name}' created successfully.")
 
-    # File Validation
-    validator = FileValidation(bucket_name, bronze_folder, silver_folder)
-    validator.validate_and_process_files()
+    def create_folder_if_not_exists(folder_path):
+        blobs = list(bucket.list_blobs(prefix=folder_path))
+        if not blobs:
+            print(f"Folder '{folder_path}' not found. Creating...")
+            blob = bucket.blob(f"{folder_path}/.placeholder")
+            blob.upload_from_string('')
+            print(f"Folder '{folder_path}' created successfully.")
+        else:
+            print(f"Folder '{folder_path}' already exists.")
 
-    # Data Ingestion
-    data_ingestion = DataIngestion(bucket_name, silver_folder)
-    dataframes = data_ingestion.read_data()
+    create_folder_if_not_exists(bronze_layer_path)
+    create_folder_if_not_exists(silver_layer_path)
 
-    # Data Validation
-    data_validation = DataValidation(dataframes)
-    data_validation.validate_data()
+create_bucket_and_folders()
 
-    # BigQuery Loading
-    bq_loader = BigQueryLoader(project_id)
-    bq_loader.create_dataset_if_not_exists(dataset_id)
+# Data ingestion
+data_ingestion = DataIngestion(storage_client, bucket_name, bronze_layer_path)
+dataframes = data_ingestion.read_data()
 
-    for file_name, df in dataframes.items():
-        table_id = file_name.split('.')[0]
-        bq_loader.load_dataframe(df, dataset_id, table_id)
-        print(f"Tabela '{table_id}' carregada com sucesso.")
+# Data validation
+data_validation = DataValidation(dataframes)
+data_validation.validate_data()
 
-    # Run dbt commands
-    subprocess.run(['dbt', 'deps'], cwd='dbt_validations')
-    subprocess.run(['dbt', 'seed'], cwd='dbt_validations')
-    subprocess.run(['dbt', 'run'], cwd='dbt_validations')
-    subprocess.run(['dbt', 'test'], cwd='dbt_validations')
+# Load data into BigQuery
+bq_loader = BigQueryLoader(project_id)
+bq_loader.create_dataset_if_not_exists(dataset_id)
 
-@app.route('/', methods=['GET'])
-def trigger_etl_endpoint():
-    run_etl()
-    return 'ETL process completed', 200
+for file_name, df in dataframes.items():
+    table_id = os.path.splitext(file_name)[0]
+    bq_loader.load_dataframe(df, dataset_id, table_id)
+    print(f"Table '{table_id}' loaded successfully.")
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+# Save validated dataframes to silver_layer in Cloud Storage
+bucket = storage_client.bucket(bucket_name)
+for file_name, df in dataframes.items():
+    csv_buffer = io.StringIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)
+    blob_name = silver_layer_path + file_name
+    blob = bucket.blob(blob_name)
+    blob.upload_from_string(csv_buffer.getvalue(), content_type='text/csv')
+    print(f"File '{file_name}' saved to '{blob_name}' in bucket '{bucket_name}'.")

@@ -1,10 +1,8 @@
 project_id: 'etl-hacker-quest-ipnet'
 dataset_id: 'etl_hackerquest'
-bucket_name: 'datalake-etl-hacker-quest-ipnet'
-
-bronze_folder: 'bronze_layer'
-silver_folder: 'silver_layer'
-gold_folder: 'gold_layer'
+bucket_name: 'datalake_challenge_ipnet'
+bronze_layer_path: 'bronze_layer/'
+silver_layer_path: 'silver_layer/'
 
 file_delimiter_mapping:
   hackers.csv: '|'
